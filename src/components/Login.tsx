@@ -3,14 +3,10 @@ import { useState, type ChangeEvent, type FC } from 'react'
 import { HiLockClosed } from 'react-icons/hi'
 import { trpc } from '../utils/trpc'
 
-const Login: FC = () => {
-  const router = useRouter()
+interface loginProps {}
 
-  const { mutate: login, error } = trpc.admin.login.useMutation({
-    onSuccess: () => {
-      router.push('/dashboard')
-    }
-  })
+const Login: FC<loginProps> = ({}) => {
+  const router = useRouter()
 
   const [input, setInput] = useState({
     email: '',
@@ -18,9 +14,15 @@ const Login: FC = () => {
   })
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
+    const { value, name } = e.target
     setInput((prev) => ({ ...prev, [name]: value }))
   }
+
+  const { mutate: login, isError } = trpc.admin.login.useMutation({
+    onSuccess: () => {
+      router.push('/dashboard')
+    }
+  })
 
   return (
     <div className='flex min-h-full items-center justify-center py-12 px-4 sm:px-6 lg:px-8'>
@@ -45,7 +47,7 @@ const Login: FC = () => {
         <form className='mt-8 space-y-6'>
           <input type='hidden' name='remember' defaultValue='true' />
           <div className='-space-y-px rounded-md shadow-sm'>
-            <p className='pb-1 text-sm text-red-600'>{error && 'Invalid login credentials'}</p>
+            <p className='pb-1 text-sm text-red-600'>{isError && 'Invalid login credentials'}</p>
             <div>
               <label htmlFor='email-address' className='sr-only'>
                 Email address

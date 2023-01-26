@@ -23,11 +23,10 @@ const isAdmin = t.middleware(async ({ ctx, next }) => {
   if (!verifiedToken) {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid user token' })
   }
-
+  // user is authenticated as admin
   return next()
 })
 
 export const router = t.router
-
 export const publicProcedure = t.procedure
 export const adminProcedure = t.procedure.use(isAdmin)
