@@ -1,17 +1,19 @@
-import { getJwtSecretKey } from '@lib/auth'
-import { SignJWT } from 'jose'
-import { router, adminProcedure, publicProcedure } from '../trpc'
-import { z } from 'zod'
-import cookie from 'cookie'
-import { nanoid } from 'nanoid'
+import { s3 } from '@lib/s3'
 import { TRPCError } from '@trpc/server'
+import cookie from 'cookie'
+import { SignJWT } from 'jose'
+import { nanoid } from 'nanoid'
+import { MAX_FILE_SIZE } from 'src/constants/config'
+import { z } from 'zod'
+import { getJwtSecretKey } from '@lib/auth'
+import { router, adminProcedure, publicProcedure } from '../trpc'
 
 // creating an endpoint
 export const adminRouter = router({
   login: publicProcedure
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.string(),
         password: z.string()
       })
     )
@@ -44,5 +46,70 @@ export const adminRouter = router({
         code: 'UNAUTHORIZED',
         message: 'Invalid email or password'
       })
+    }),
+
+  createPresignedUrl: adminProcedure
+    .input(z.object({ fileType: z.string() }))
+    .mutation(async ({ input }) => {
+      const id = nanoid()
+      const ex = input.fileType.split('/')[1]
+      const key = `${id}.${ex}`
+
+      const { url, fields } = (await new Promise((resolve, reject) => {
+        s3.createPresignedPost(
+          {
+            Bucket: 'booking-implementation-adam-swim',
+            Fields: { key },
+            Expires: 60,
+            Conditions: [
+              ['content-length-range', 0, MAX_FILE_SIZE],
+              ['starts-with', '$Content-Type', 'image/']
+            ]
+          },
+          (err, signed) => {
+            if (err) return reject(err)
+            resolve(signed)
+          }
+        )
+      })) as any as { url: string; fields: any }
+
+      return { url, fields, key }
+    }),
+
+  addMenuItem: adminProcedure
+    .input(
+      z.object({
+        imageKey: z.string(),
+        name: z.string(),
+        price: z.number(),
+        categories: z.array(
+          z.union([z.literal('breakfast'), z.literal('lunch'), z.literal('dinner')])
+        )
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { name, price, imageKey, categories } = input
+      const menuItem = await ctx.prisma.menuItem.create({
+        data: {
+          imageKey,
+          name,
+          price,
+          categories
+        }
+      })
+
+      return menuItem
+    }),
+
+  deleteMenuItem: adminProcedure
+    .input(z.object({ imageKey: z.string(), id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Delete the image from s3
+      const { id, imageKey } = input
+      await s3.deleteObject({ Bucket: 'booking-implementation-adam-swim', Key: imageKey }).promise()
+      // Delete the image from db
+      await ctx.prisma.menuItem.delete({ where: { id } })
+
+      return true
     })
 })

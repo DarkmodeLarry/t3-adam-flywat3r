@@ -18,7 +18,7 @@ export const menuRouter = router({
         return {
           ...menuItem,
           url: await s3.getSignedUrlPromise('getObject', {
-            Bucket: 'youtube-booking-software',
+            Bucket: 'booking-implementation-adam-swim',
             Key: menuItem.imageKey
           })
         }
@@ -28,13 +28,8 @@ export const menuRouter = router({
     return withUrls
   }),
 
-  /**
-   * Method for checking the validity of the user time & date selection
-   * @returns boolean indicating if the user selection is valid
-   */
-
   checkMenuStatus: publicProcedure.query(async () => {
-    // Mock menu checking logic
+    // handle menu checking logic
     await sleep(1000)
 
     return true

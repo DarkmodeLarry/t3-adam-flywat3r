@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import type { FC } from 'react'
-import { trpc } from '../utils/trpc'
 
 const dashboard: FC = () => {
   return (
